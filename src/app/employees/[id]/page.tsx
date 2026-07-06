@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db } from '../../../db';
 import { employees } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";

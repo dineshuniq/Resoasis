@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { clients, projects } from "@/db/schema";
+import { clients, projects } from '../../db/schema';
 import { isNull, ilike, or } from "drizzle-orm";
 import Link from "next/link";
 
