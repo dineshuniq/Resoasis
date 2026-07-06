@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import './globals.css';
 import Link from "next/link";
 import { LayoutDashboard, Building2, FolderKanban, Users } from "lucide-react";
-import './globals.css'; // Add this line back at the top
 
 export const metadata: Metadata = {
   title: "SOMS - Service Operations Management System",
