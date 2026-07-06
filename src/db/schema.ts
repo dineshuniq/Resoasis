@@ -124,7 +124,7 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   projects: many(projects),
 }));
 
-export const projectsRelations = relations(projects, ({ roles, one, many }) => ({
+export const projectsRelations = relations(projects, ({ one, many }) => ({
   client: one(clients, { fields: [projects.clientId], references: [clients.id] }),
   milestones: many(milestones),
   dailyUpdates: many(dailyUpdates),
