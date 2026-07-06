@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LayoutDashboard, Building2, FolderKanban, Users } from "lucide-react";
-import "@/app/globals.css"; // Assumes standard Tailwind entry point
+
 
 export const metadata: Metadata = {
   title: "SOMS - Service Operations Management System",
