@@ -1,3 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* If you still want to verify it works, keep our debug line here */
+body {
+  background-color: purple !important;
+}
