@@ -23,6 +23,9 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts",
+  "global.d.ts"  // <--- Make sure this or "**/*.ts" covers it
+],
   "exclude": ["node_modules"]
+  
 }
