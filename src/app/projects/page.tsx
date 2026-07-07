@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { projects, clients } from "@/db/schema";
 import { isNull, ilike, or, and } from "drizzle-orm";
 import Link from "next/link";
+import { CreateProjectForm } from "./create-project-form";
 
 interface Props {
   searchParams: { q?: string };
@@ -27,11 +28,19 @@ export default async function ProjectsListPage({ searchParams }: Props) {
     }
   });
 
+  const activeClients = await db.query.clients.findMany({
+    where: isNull(clients.deletedAt),
+    columns: { id: true, name: true },
+  });
+
   return (
     <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">Active Projects Matrix</h1>
-        <p className="text-xs text-slate-500 mt-1">Operational view of active client scopes and delivery pipelines.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Active Projects Matrix</h1>
+          <p className="text-xs text-slate-500 mt-1">Operational view of active client scopes and delivery pipelines.</p>
+        </div>
+        <CreateProjectForm clients={activeClients} />
       </div>
 
       {/* Instant Filter input */}

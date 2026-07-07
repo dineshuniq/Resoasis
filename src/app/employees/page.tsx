@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { employees } from "@/db/schema";
 import { isNull, ilike, or, and } from "drizzle-orm";
 import Link from "next/link";
+import { CreateEmployeeForm } from "./create-employee-form";
 
 interface Props {
   searchParams: { q?: string };
@@ -32,9 +33,12 @@ export default async function EmployeesListPage({ searchParams }: Props) {
 
   return (
     <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">Resource Matrix Directory</h1>
-        <p className="text-xs text-slate-500 mt-1">Real-time status tracking of structural utilization bounds.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Resource Matrix Directory</h1>
+          <p className="text-xs text-slate-500 mt-1">Real-time status tracking of structural utilization bounds.</p>
+        </div>
+        <CreateEmployeeForm />
       </div>
 
       <form method="GET" className="w-full">

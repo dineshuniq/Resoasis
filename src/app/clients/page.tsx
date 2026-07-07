@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { clients, projects } from '../../db/schema';
 import { and, or, ilike, isNull } from 'drizzle-orm';
 import Link from "next/link";
+import { CreateClientForm } from "./create-client-form";
 
 interface Props {
   searchParams: { q?: string };
@@ -30,6 +31,7 @@ export default async function ClientsListPage({ searchParams }: Props) {
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Clients</h1>
           <p className="text-xs text-slate-500 mt-1">Directory of active service relationships.</p>
         </div>
+        <CreateClientForm />
       </div>
 
       {/* Global Search Input Box */}
