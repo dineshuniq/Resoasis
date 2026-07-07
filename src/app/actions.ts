@@ -9,6 +9,19 @@ import { revalidatePath } from "next/cache";
 // 1. CLIENT ACTIONS
 // ==========================================
 
+export async function getActiveClients() {
+  try {
+    const { isNull } = await import("drizzle-orm");
+    const clientData = await db.query.clients.findMany({
+      where: isNull(clients.deletedAt),
+      columns: { id: true, name: true },
+    });
+    return { success: true, data: clientData };
+  } catch (error) {
+    return { success: false, data: [], error: (error as Error).message };
+  }
+}
+
 export async function createClient(formData: FormData) {
   try {
     const name = formData.get("name") as string;

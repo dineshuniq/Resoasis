@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { createProject } from "@/app/actions";
+import { useState, useEffect } from "react";
+import { createProject, getActiveClients } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { projectStatusEnum, priorityLevelsEnum } from "@/db/schema";
@@ -12,10 +12,25 @@ interface Client {
   name: string;
 }
 
-export function CreateProjectForm({ clients }: { clients: Client[] }) {
+export function CreateProjectForm({ clients: initialClients }: { clients: Client[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
+
+  // Fetch fresh client data every time the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoadingClients(true);
+      getActiveClients().then((res) => {
+        if (res.success && res.data) {
+          setClients(res.data);
+        }
+        setIsLoadingClients(false);
+      });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,11 +57,16 @@ export function CreateProjectForm({ clients }: { clients: Client[] }) {
             <div className="space-y-1">
               <label className="font-medium text-slate-700">Client <span className="text-rose-500">*</span></label>
               <select name="clientId" required className="w-full border border-slate-200 rounded p-2 text-sm bg-white focus:outline-none focus:border-slate-400">
-                <option value="">-- Select Client --</option>
+                <option value="">
+                  {isLoadingClients ? "Loading clients..." : "-- Select Client --"}
+                </option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id}>{client.name}</option>
                 ))}
               </select>
+              {!isLoadingClients && clients.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">No active clients found. Please create a client first.</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="font-medium text-slate-700">Project Name <span className="text-rose-500">*</span></label>
@@ -114,7 +134,9 @@ export function CreateProjectForm({ clients }: { clients: Client[] }) {
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isPending}>{isPending ? "Creating..." : "Create Project"}</Button>
+            <Button type="submit" disabled={isPending || clients.length === 0}>
+              {isPending ? "Creating..." : "Create Project"}
+            </Button>
           </div>
         </form>
       </Modal>
