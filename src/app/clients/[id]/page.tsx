@@ -3,6 +3,9 @@ import { clients, projects } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ClientEditForm } from "./client-edit-form";
+import { ActionButton } from "@/components/ui/action-button";
+import { softDeleteClient, restoreClient } from "@/app/actions";
 
 interface Props {
   params: { id: string };
@@ -10,7 +13,7 @@ interface Props {
 
 export default async function ClientDetailPage({ params }: Props) {
   const client = await db.query.clients.findFirst({
-    where: and(eq(clients.id, params.id), isNull(clients.deletedAt)),
+    where: eq(clients.id, params.id),
     with: {
       projects: {
         where: isNull(projects.deletedAt)
@@ -31,10 +34,40 @@ export default async function ClientDetailPage({ params }: Props) {
         <span className="text-slate-600">{client.name.toUpperCase()}</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">{client.name}</h1>
-        <p className="text-xs text-slate-500 mt-1">Core relationship payload data profile.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">{client.name}</h1>
+          <p className="text-xs text-slate-500 mt-1">Core relationship payload data profile.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {client.deletedAt ? (
+            <ActionButton 
+              action={restoreClient} 
+              id={client.id} 
+              label="Restore Client" 
+              variant="primary"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            />
+          ) : (
+            <>
+              <ClientEditForm client={client} />
+              <ActionButton 
+                action={softDeleteClient} 
+                id={client.id} 
+                label="Archive Client" 
+                variant="destructive"
+                confirmMessage="Are you sure you want to archive this client?"
+              />
+            </>
+          )}
+        </div>
       </div>
+
+      {client.deletedAt && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-between">
+          <span>This client has been archived. Project associations remain intact but are filtered from active directories.</span>
+        </div>
+      )}
 
       {/* Main Dense Scroll Stack Layout */}
       <div className="space-y-6">

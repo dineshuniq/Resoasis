@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { clients, projects, employees, milestones, dailyUpdates, projectStatusEnum, priorityLevelsEnum, employeeAvailabilityEnum } from "@/db/schema";
+import { clients, projects, employees, milestones, dailyUpdates, projectResources, projectStatusEnum, priorityLevelsEnum, employeeAvailabilityEnum } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -45,6 +45,54 @@ export async function softDeleteClient(clientId: string) {
       .where(eq(clients.id, clientId));
 
     revalidatePath("/clients");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function updateClient(clientId: string, formData: FormData) {
+  try {
+    const name = formData.get("name") as string;
+    const industry = formData.get("industry") as string;
+    const primaryContactName = formData.get("primaryContactName") as string;
+    const phone = formData.get("phone") as string;
+    const email = formData.get("email") as string;
+    const accountManager = formData.get("accountManager") as string;
+    const status = formData.get("status") as string;
+    const remarks = formData.get("remarks") as string;
+
+    await db
+      .update(clients)
+      .set({
+        name,
+        industry,
+        primaryContactName,
+        phone,
+        email,
+        accountManager,
+        status,
+        remarks: remarks || null,
+      })
+      .where(eq(clients.id, clientId));
+
+    revalidatePath("/clients");
+    revalidatePath(`/clients/${clientId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function restoreClient(clientId: string) {
+  try {
+    await db
+      .update(clients)
+      .set({ deletedAt: null })
+      .where(eq(clients.id, clientId));
+
+    revalidatePath("/clients");
+    revalidatePath(`/clients/${clientId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -130,6 +178,69 @@ export async function softDeleteProject(projectId: string, clientId: string) {
   }
 }
 
+export async function updateProject(projectId: string, formData: FormData) {
+  try {
+    const name = formData.get("name") as string;
+    const domain = formData.get("domain") as string;
+    const projectManager = formData.get("projectManager") as string;
+    const projectLead = formData.get("projectLead") as string;
+    const description = formData.get("description") as string;
+    const remarks = formData.get("remarks") as string;
+    
+    const status = formData.get("status") as typeof projectStatusEnum[number];
+    const priority = formData.get("priority") as typeof priorityLevelsEnum[number];
+    
+    const progressRaw = parseInt(formData.get("progress") as string, 10);
+    const progress = Math.min(Math.max(isNaN(progressRaw) ? 0 : progressRaw, 0), 100);
+
+    await db
+      .update(projects)
+      .set({
+        name,
+        domain,
+        projectManager,
+        projectLead,
+        status: status || "Not Started",
+        priority: priority || "Medium",
+        progress,
+        description,
+        remarks: remarks || null,
+      })
+      .where(eq(projects.id, projectId));
+
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function assignResourceToProject(projectId: string, employeeId: string) {
+  try {
+    await db.insert(projectResources).values({
+      projectId,
+      employeeId,
+    });
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function removeResourceFromProject(projectId: string, employeeId: string) {
+  try {
+    await db
+      .delete(projectResources)
+      .where(and(eq(projectResources.projectId, projectId), eq(projectResources.employeeId, employeeId)));
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
 // ==========================================
 // 3. EMPLOYEE ACTIONS
 // ==========================================
@@ -162,6 +273,73 @@ export async function createEmployee(formData: FormData) {
     });
 
     revalidatePath("/employees");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function updateEmployee(employeeId: string, formData: FormData) {
+  try {
+    const name = formData.get("name") as string;
+    const designation = formData.get("designation") as string;
+    const department = formData.get("department") as string;
+    const phone = formData.get("phone") as string;
+    const email = formData.get("email") as string;
+    const reportingManager = formData.get("reportingManager") as string;
+    const remarks = formData.get("remarks") as string;
+    
+    const availabilityStatus = formData.get("availabilityStatus") as typeof employeeAvailabilityEnum[number];
+    
+    const allocationRaw = parseInt(formData.get("currentAllocation") as string, 10);
+    const currentAllocation = isNaN(allocationRaw) ? 0 : allocationRaw;
+
+    await db
+      .update(employees)
+      .set({
+        name,
+        designation,
+        department,
+        phone,
+        email,
+        reportingManager,
+        currentAllocation,
+        availabilityStatus: availabilityStatus || "Available",
+        remarks: remarks || null,
+      })
+      .where(eq(employees.id, employeeId));
+
+    revalidatePath("/employees");
+    revalidatePath(`/employees/${employeeId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function softDeleteEmployee(employeeId: string) {
+  try {
+    await db
+      .update(employees)
+      .set({ deletedAt: new Date() })
+      .where(eq(employees.id, employeeId));
+
+    revalidatePath("/employees");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function restoreEmployee(employeeId: string) {
+  try {
+    await db
+      .update(employees)
+      .set({ deletedAt: null })
+      .where(eq(employees.id, employeeId));
+
+    revalidatePath("/employees");
+    revalidatePath(`/employees/${employeeId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -229,3 +407,49 @@ export async function createMilestone(projectId: string, formData: FormData) {
     return { success: false, error: (error as Error).message };
   }
 }
+
+export async function updateMilestone(milestoneId: string, projectId: string, formData: FormData) {
+  try {
+    const title = formData.get("title") as string;
+    const owner = formData.get("owner") as string;
+    const remarks = formData.get("remarks") as string;
+    const status = formData.get("status") as string;
+    
+    const startDate = new Date(formData.get("startDate") as string);
+    const dueDate = new Date(formData.get("dueDate") as string);
+    
+    const progressRaw = parseInt(formData.get("progress") as string, 10);
+    const progress = Math.min(Math.max(isNaN(progressRaw) ? 0 : progressRaw, 0), 100);
+
+    await db
+      .update(milestones)
+      .set({
+        title,
+        owner,
+        startDate,
+        dueDate,
+        progress,
+        status: status || "Pending",
+        remarks: remarks || null,
+      })
+      .where(eq(milestones.id, milestoneId));
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function deleteMilestone(milestoneId: string, projectId: string) {
+  try {
+    await db
+      .delete(milestones)
+      .where(eq(milestones.id, milestoneId));
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}

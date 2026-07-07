@@ -3,6 +3,9 @@ import { employees } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { EmployeeEditForm } from "./employee-edit-form";
+import { ActionButton } from "@/components/ui/action-button";
+import { softDeleteEmployee, restoreEmployee } from "@/app/actions";
 
 interface Props {
   params: { id: string };
@@ -10,7 +13,7 @@ interface Props {
 
 export default async function EmployeeDetailPage({ params }: Props) {
   const employee = await db.query.employees.findFirst({
-    where: and(eq(employees.id, params.id), isNull(employees.deletedAt)),
+    where: eq(employees.id, params.id),
     with: {
       projects: {
         with: {
@@ -32,10 +35,40 @@ export default async function EmployeeDetailPage({ params }: Props) {
         <span className="text-slate-600">{employee.name.toUpperCase()}</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">{employee.name}</h1>
-        <p className="text-xs text-slate-500 mt-1">{employee.designation} &mdash; <span className="font-mono text-[11px]">{employee.department}</span></p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">{employee.name}</h1>
+          <p className="text-xs text-slate-500 mt-1">{employee.designation} &mdash; <span className="font-mono text-[11px]">{employee.department}</span></p>
+        </div>
+        <div className="flex items-center gap-3">
+          {employee.deletedAt ? (
+            <ActionButton 
+              action={restoreEmployee} 
+              id={employee.id} 
+              label="Restore Employee" 
+              variant="primary"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            />
+          ) : (
+            <>
+              <EmployeeEditForm employee={employee} />
+              <ActionButton 
+                action={softDeleteEmployee} 
+                id={employee.id} 
+                label="Archive Employee" 
+                variant="destructive"
+                confirmMessage="Are you sure you want to archive this employee? They will be marked as inactive."
+              />
+            </>
+          )}
+        </div>
       </div>
+
+      {employee.deletedAt && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-between">
+          <span>This employee has been archived. Their profile is inactive and they are removed from standard availability pools.</span>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Core Attributes Profile */}

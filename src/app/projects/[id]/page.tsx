@@ -1,8 +1,11 @@
 import { db } from "@/db";
-import { projects } from "@/db/schema";
+import { projects, employees } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ProjectEditForm } from "./project-edit-form";
+import { SquadManager } from "./squad-manager";
+import { EditableMilestones } from "./editable-milestones";
 
 interface Props {
   params: { id: string };
@@ -25,6 +28,11 @@ export default async function ProjectDetailPage({ params }: Props) {
     }
   });
 
+  const availableEmployees = await db.query.employees.findMany({
+    where: and(isNull(employees.deletedAt), eq(employees.availabilityStatus, "Available")),
+    orderBy: (emp, { asc }) => [asc(emp.name)]
+  });
+
   if (!project) {
     notFound();
   }
@@ -40,7 +48,10 @@ export default async function ProjectDetailPage({ params }: Props) {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">{project.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">{project.name}</h1>
+            <ProjectEditForm project={project} />
+          </div>
           <p className="text-xs text-slate-500 mt-1">Client Domain: <span className="font-medium text-slate-700">{project.client?.name}</span></p>
         </div>
         <div className="flex items-center gap-4 text-right">
@@ -82,59 +93,10 @@ export default async function ProjectDetailPage({ params }: Props) {
         </div>
 
         {/* Row 3: Assigned Workforce Node Matrix */}
-        <div className="border border-slate-200 bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-4 bg-white border-b border-slate-100">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-400">Allocated Operational Allocation Squad</h2>
-          </div>
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {project.resources.length === 0 ? (
-              <div className="text-xs text-slate-400 font-mono py-2 col-span-full text-center">No assigned human resources mapped to this project scope.</div>
-            ) : (
-              project.resources.map(({ employee }) => (
-                <Link href={`/employees/${employee.id}`} key={employee.id} className="border border-slate-100 bg-slate-50/50 p-3 rounded-md hover:bg-slate-50 transition-colors block">
-                  <div className="text-xs font-bold text-slate-900">{employee.name}</div>
-                  <div className="text-[11px] text-slate-500">{employee.designation} ({employee.department})</div>
-                  <div className="text-[10px] font-mono text-amber-600 font-bold mt-1">Internal Load: {employee.currentAllocation}%</div>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
+        <SquadManager projectId={project.id} resources={project.resources} availableEmployees={availableEmployees} />
 
         {/* Row 4: Milestones Realization Table */}
-        <div className="border border-slate-200 bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-4 bg-white border-b border-slate-100">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-400">Execution Delivery Milestones</h2>
-          </div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 font-mono text-[11px] text-slate-500 uppercase tracking-wider">
-                <th className="py-2 px-4 font-semibold">Milestone Object Target</th>
-                <th className="py-2 px-4 font-semibold">Owner Node</th>
-                <th className="py-2 px-4 font-semibold">Target Target Window</th>
-                <th className="py-2 px-4 font-semibold text-right">Completion Value</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {project.milestones.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-4 text-center text-slate-400 font-mono">No structural execution milestones configured.</td>
-                </tr>
-              ) : (
-                project.milestones.map((milestone) => (
-                  <tr key={milestone.id}>
-                    <td className="py-2.5 px-4 font-bold text-slate-900">{milestone.title}</td>
-                    <td className="py-2.5 px-4 text-slate-600">{milestone.owner}</td>
-                    <td className="py-2.5 px-4 font-mono text-slate-500 text-[11px]">
-                      {new Date(milestone.startDate).toLocaleDateString()} &rarr; {new Date(milestone.dueDate).toLocaleDateString()}
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">{milestone.progress}%</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <EditableMilestones milestones={project.milestones} projectId={project.id} />
 
         {/* Row 5: Chronological Activity Stream Logs */}
         <div className="border border-slate-200 bg-white rounded-lg shadow-sm p-5">
