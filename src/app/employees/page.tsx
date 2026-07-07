@@ -3,6 +3,7 @@ import { employees } from "@/db/schema";
 import { isNull, ilike, or, and } from "drizzle-orm";
 import Link from "next/link";
 import { CreateEmployeeForm } from "./create-employee-form";
+import { syncAllEmployeeAvailabilities } from "@/app/actions";
 
 interface Props {
   searchParams: { q?: string };
@@ -10,6 +11,9 @@ interface Props {
 
 export default async function EmployeesListPage({ searchParams }: Props) {
   const query = searchParams.q || "";
+
+  // Self-heal employee availability status inconsistencies in the DB
+  await syncAllEmployeeAvailabilities();
 
   const employeeData = await db.query.employees.findMany({
     where: and(

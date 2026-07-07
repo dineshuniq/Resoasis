@@ -5,6 +5,58 @@ import { clients, projects, employees, milestones, dailyUpdates, projectResource
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+
+// ==========================================
+// 0. HELPER ACTIONS (AVAILABILITY RULES)
+// ==========================================
+
+async function updateEmployeeAvailability(employeeId: string) {
+  const employee = await db.query.employees.findFirst({
+    where: eq(employees.id, employeeId),
+  });
+  if (!employee) return;
+
+  const assignments = await db.query.projectResources.findMany({
+    where: eq(projectResources.employeeId, employeeId),
+    with: {
+      project: true,
+    },
+  });
+
+  const activeProjects = assignments.filter(
+    (a) =>
+      a.project &&
+      a.project.deletedAt === null &&
+      a.project.status !== "Completed" &&
+      a.project.status !== "Cancelled"
+  );
+
+  let newStatus = employee.availabilityStatus;
+  if (activeProjects.length > 0) {
+    newStatus = "Allocated";
+  } else {
+    if (employee.availabilityStatus === "Allocated") {
+      newStatus = "Available";
+    }
+  }
+
+  if (newStatus !== employee.availabilityStatus) {
+    await db
+      .update(employees)
+      .set({ availabilityStatus: newStatus })
+      .where(eq(employees.id, employeeId));
+  }
+}
+
+async function updateProjectResourcesAvailability(projectId: string) {
+  const resourcesList = await db.query.projectResources.findMany({
+    where: eq(projectResources.projectId, projectId),
+  });
+  for (const resource of resourcesList) {
+    await updateEmployeeAvailability(resource.employeeId);
+  }
+}
+
 // ==========================================
 // 1. CLIENT ACTIONS
 // ==========================================
@@ -183,6 +235,9 @@ export async function softDeleteProject(projectId: string, clientId: string) {
       .set({ deletedAt: new Date() })
       .where(eq(projects.id, projectId));
 
+    // Update all assigned resources status to "Available" if no other active projects
+    await updateProjectResourcesAvailability(projectId);
+
     revalidatePath("/projects");
     revalidatePath(`/clients/${clientId}`);
     return { success: true };
@@ -221,6 +276,9 @@ export async function updateProject(projectId: string, formData: FormData) {
       })
       .where(eq(projects.id, projectId));
 
+    // Update all assigned resources status based on the new project status
+    await updateProjectResourcesAvailability(projectId);
+
     revalidatePath("/projects");
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
@@ -235,7 +293,13 @@ export async function assignResourceToProject(projectId: string, employeeId: str
       projectId,
       employeeId,
     });
+
+    // Update availability status based on project state
+    await updateEmployeeAvailability(employeeId);
+
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/employees");
+    revalidatePath(`/employees/${employeeId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -247,7 +311,13 @@ export async function removeResourceFromProject(projectId: string, employeeId: s
     await db
       .delete(projectResources)
       .where(and(eq(projectResources.projectId, projectId), eq(projectResources.employeeId, employeeId)));
+
+    // Recalculate employee availability status
+    await updateEmployeeAvailability(employeeId);
+
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/employees");
+    revalidatePath(`/employees/${employeeId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -461,6 +531,18 @@ export async function deleteMilestone(milestoneId: string, projectId: string) {
       .where(eq(milestones.id, milestoneId));
 
     revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function syncAllEmployeeAvailabilities() {
+  try {
+    const allEmps = await db.query.employees.findMany();
+    for (const emp of allEmps) {
+      await updateEmployeeAvailability(emp.id);
+    }
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };

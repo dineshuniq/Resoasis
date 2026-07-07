@@ -12,6 +12,7 @@ interface Employee {
   designation: string;
   department: string;
   currentAllocation: number;
+  availabilityStatus: string;
 }
 
 interface Resource {
@@ -44,20 +45,41 @@ export function SquadManager({ projectId, resources, availableEmployees }: Squad
     }
   };
 
+  const assignedIds = new Set(resources.map(r => r.employee.id));
+  const unassignedEmployees = availableEmployees.filter(emp => !assignedIds.has(emp.id));
+
+  const sortedEmployees = [...unassignedEmployees].sort((a, b) => {
+    const aAvail = a.availabilityStatus === "Available" ? 0 : 1;
+    const bAvail = b.availabilityStatus === "Available" ? 0 : 1;
+    if (aAvail !== bAvail) return aAvail - bAvail;
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div className="border border-slate-200 bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 bg-white border-b border-slate-100 flex items-center justify-between">
         <h2 className="text-xs font-mono uppercase tracking-wider text-slate-400">Allocated Operational Squad</h2>
         <div className="flex items-center gap-2">
           <select 
-            className="text-xs border border-slate-200 rounded p-1.5 w-48 bg-slate-50"
+            className="text-xs border border-slate-200 rounded p-1.5 w-64 bg-slate-50"
             value={selectedEmployeeId}
             onChange={(e) => setSelectedEmployeeId(e.target.value)}
           >
             <option value="">-- Add Team Member --</option>
-            {availableEmployees.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.name} ({emp.designation})</option>
-            ))}
+            {sortedEmployees.map(emp => {
+              const isAvailable = emp.availabilityStatus === "Available";
+              return (
+                <option 
+                  key={emp.id} 
+                  value={emp.id}
+                  style={{ color: isAvailable ? "#10B981" : "#64748B" }}
+                  className={isAvailable ? "text-emerald-500 font-bold" : "text-slate-500"}
+                >
+                  {isAvailable ? "🟢 " : "⚪ "}
+                  {emp.name} ({emp.designation} - {emp.availabilityStatus})
+                </option>
+              );
+            })}
           </select>
           <Button 
             variant="secondary" 
